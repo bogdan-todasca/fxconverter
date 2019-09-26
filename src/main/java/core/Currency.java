@@ -56,6 +56,6 @@ public class Currency {
     }
 
     public double convert(final Currency to, final double amount){
-        return amount * Double.parseDouble(RONvalue) / Double.parseDouble(to.RONvalue);
+        return amount / multiplier * Double.parseDouble(RONvalue) / Double.parseDouble(to.RONvalue) * to.multiplier;
     }
 }
