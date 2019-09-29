@@ -1,8 +1,6 @@
 package ui;
 
-import core.Callback;
-import core.Currency;
-import core.FXComputation;
+import core.*;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -10,6 +8,7 @@ import java.awt.*;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Created by bogdantodasca on 15/09/2019.
@@ -23,19 +22,34 @@ public class FXConverterUI extends JFrame {
     private JLabel date;
     private FormattableInput input;
     private final FXComputation fxComputation;
+    private final FXPersistence fxPersistence;
     private JComboBox<Currency> from;
     private JComboBox<Currency> to;
     private JCheckBox saveData;
     private DecimalFormat amountFormat = new DecimalFormat("###,###");
     private JButton swapButton;
-    public FXConverterUI(final FXComputation fxComputation) {
+    private final FXProperties properties;
+
+    public FXConverterUI(final FXComputation fxComputation,
+                         final FXPersistence fxPersistence,
+                         final FXProperties properties) {
         this.fxComputation = fxComputation;
+        this.fxPersistence = fxPersistence;
+        this.properties = properties;
         setTitle("FX Converter");
         initLayout();
+        enableComponents(false);
         initEvents();
         setPreferredSize(new Dimension(450, 165));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         pack();
+    }
+
+    private void enableComponents(boolean enabled) {
+        this.to.setEnabled(enabled);
+        this.from.setEnabled(enabled);
+        this.input.getComponent().setEnabled(enabled);
+        swapButton.setEnabled(enabled);
     }
 
     private void initLayout() {
@@ -76,7 +90,7 @@ public class FXConverterUI extends JFrame {
         saveData.setSelected(true);
         swapButton = new JButton();
         try {
-            final Image img = ImageIO.read(getClass().getClassLoader().getResource("Webp.net-resizeimage.png"));
+            final Image img = ImageIO.read(Objects.requireNonNull(getClass().getClassLoader().getResource("Webp.net-resizeimage.png")));
             swapButton.setIcon(new ImageIcon(img));
             swapButton.setPreferredSize(new Dimension(50, 20));
         } catch (IOException e) {
@@ -103,7 +117,18 @@ public class FXConverterUI extends JFrame {
         });
     }
 
+    private void saveData() {
+        if (saveData.isSelected() && input.getComponent().isEnabled()) {
+            FXConverterUI.this.fxPersistence.
+                    persist(
+                            (Currency) from.getSelectedItem(),
+                            (Currency) to.getSelectedItem(),
+                            FXConverterUI.this.input.getValue());
+        }
+    }
+
     private void computeResult() {
+        saveData();
         FXConverterUI.this.fxComputation.
                 compute(
                         (Currency) from.getSelectedItem(),
@@ -114,7 +139,7 @@ public class FXConverterUI extends JFrame {
     public Callback<Double> getResultCallback() {
         return result -> SwingUtilities.invokeLater(() ->
                 this.resultValue.setText(amountFormat.format(result) + " " +
-                        ((Currency) to.getSelectedItem()).getDisplay()));
+                        ((Currency) Objects.requireNonNull(to.getSelectedItem())).getDisplay()));
     }
 
     public void setStatus(final String newStatus) {
@@ -125,16 +150,36 @@ public class FXConverterUI extends JFrame {
         date.setText(String.format("FX: %s", s));
     }
 
+    private void initFromPersistence() {
+        if (properties != null) {
+            final String fromValue = properties.getFrom();
+            final String toValue = properties.getTo();
+            final Long amountValue = properties.getAmount();
+            if (fromValue != null) {
+                from.setSelectedItem(new Currency(fromValue));
+            }
+            if (toValue != null) {
+                to.setSelectedItem(new Currency(toValue));
+            }
+            if (amountValue != null) {
+                input.getComponent().requestFocus();
+                input.getComponent().setText(Long.toString(amountValue));
+            }
+        }
+    }
+
     public void updateDropDowns(List<Currency> data) {
         data.forEach(fromModel::addElement);
         data.forEach(toModel::addElement);
+        initFromPersistence();
+        enableComponents(true);
     }
 
     private String format(String value) {
         if (value.trim().isEmpty()) {
             return "";
         }
-        if(value.endsWith("k")){
+        if (value.endsWith("k")) {
             value = value.replace("k", "000");
         }
         final long number = Long.parseLong(value.replaceAll(",", ""));

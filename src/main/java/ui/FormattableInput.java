@@ -11,9 +11,8 @@ import java.awt.event.FocusEvent;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
-public class FormattableInput {
+class FormattableInput {
     private final JTextField input;
     private final String placeholder;
     private static final Color PLACEHOLDER_COLOR = Color.GRAY;
@@ -24,7 +23,7 @@ public class FormattableInput {
     private final Function<String, Long> unformat;
     private final Set<Notifier> listeners = new HashSet<>();
 
-    public FormattableInput(final String placeholder, final Function<String, String> format, final Function<String, Long> unformat) {
+    FormattableInput(final String placeholder, final Function<String, String> format, final Function<String, Long> unformat) {
         this.input = new JTextField();
         this.placeholder = placeholder;
         this.format = format;
@@ -56,9 +55,7 @@ public class FormattableInput {
         this.input.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
-                if (input.getText().equals(placeholder)) {
-                    setPlaceHolderVisible(false);
-                }
+                setPlaceHolderVisible(false);
             }
 
             @Override
@@ -76,11 +73,16 @@ public class FormattableInput {
         }
         pauseEvents = true;
         SwingUtilities.invokeLater(() -> {
-            if (!placeholderVisible) {
-                input.setText(format.apply(input.getText()));
+            try {
+                if (!placeholderVisible) {
+                    input.setText(format.apply(input.getText()));
+                }
+                notifyListeners();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            } finally {
+                pauseEvents = false;
             }
-            notifyListeners();
-            pauseEvents = false;
         });
 
     }
@@ -105,15 +107,15 @@ public class FormattableInput {
         });
     }
 
-    public JTextField getComponent() {
+    JTextField getComponent() {
         return input;
     }
 
-    public long getValue() {
+    long getValue() {
         return placeholderVisible ? 0 : unformat.apply(input.getText());
     }
 
-    public void addAmountChangedListener(Notifier listener) {
+    void addAmountChangedListener(Notifier listener) {
         this.listeners.add(listener);
     }
 

@@ -15,6 +15,13 @@ public class Currency {
     private static ThreadLocal<Pattern> multiplierPattern =
             ThreadLocal.withInitial(() -> Pattern.compile("(\\d+)([A-Z]+)"));
 
+    public Currency(final String display){
+        this.display = display;
+        this.description = "";
+        this.RONvalue = "";
+        this.multiplier = 1;
+    }
+
     public Currency(String display, String description, String roNvalue) {
         this.RONvalue = roNvalue;
         final Matcher m = multiplierPattern.get().matcher(display);
